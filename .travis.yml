@@ -6,6 +6,7 @@ env:
 before_install:
 - find . -name "*.sh" -print0 | xargs -0 chmod +x
 - pip install --user awscli
+script:
 - ./scripts/ecr_credentials.sh
 
 # jobs:
