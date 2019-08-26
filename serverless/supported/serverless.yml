@@ -1,0 +1,154 @@
+frameworkVersion: '>=1.26.0 <2.0.0'
+
+service: iam-cfn-global-importer-exporter-supported
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 1024
+  stackName: iam-cfn-global-importer-exporter-supported-${opt:region}
+  timeout: 30
+  tracing: true
+  deploymentBucket:
+      name: ${opt:deployment-bucket}
+      serverSideEncryption: AES256
+      tags:
+        Purpose: 'serverless deployment'
+        Category: utility
+  stackTags:
+    Name: ${opt:branch}.${self:service}
+    Owner: HO-RnD
+    CostCenter: HO-RnD
+    Purpose: ${self:service}
+  stackPolicy:
+    - Effect: Allow
+      Principal: '*'
+      Action: Update:*
+      Resource: '*'
+
+resources:
+  Conditions:
+    IsPrimaryRegion:
+      Fn::Equals:
+        - Ref: AWS::Region
+        - ${env:PRIMARY_REGION}
+
+  Resources:
+    # SNS
+    ExporterNotificationTopic:
+      Type: "AWS::SNS::Topic"
+      Properties:
+        DisplayName:
+          Fn::Join:
+            - '-'
+            - - 'ExporterTopic'
+              - Ref: 'AWS::Region'
+        TopicName: 
+          Fn::Join:
+            - '-'
+            - - 'iam-global-exporter-notification'
+              - Ref: 'AWS::Region'        
+
+    ExporterNotificationSubscription: 
+      Type: "AWS::SNS::Subscription"
+      Properties:
+        Endpoint: 
+          Fn::Join:
+            - ""
+            - - "arn:aws:lambda:"
+              - ${env:PRIMARY_REGION}
+              - ":"
+              - Ref: "AWS::AccountId"
+              - ":function:"
+              - "iam-cfn-global-exporter"
+        Protocol: "lambda"
+        TopicArn: 
+          Ref: ExporterNotificationTopic
+
+    # LAMBDA
+    IAMRegionalImporter:
+      Type: "AWS::Lambda::Function"
+      Properties:
+        Code:
+          ZipFile: |
+            const response = require('cfn-response');
+            const AWS = require('aws-sdk');
+            exports.handler = (event, context, callback) => {
+              console.log('event: ', event);
+              const { ResourceProperties } = event;
+              console.log('ResourceProperties: ', ResourceProperties);
+              const { toRegion, name } = ResourceProperties;
+              const bucket = 'ir-sls-deploy-${env:SELF_ACCOUNT}-${env:PRIMARY_REGION}/cfn-importer-exporter/' + toRegion;
+              const key = 'exports-' + toRegion +'.json';
+              let found = {};
+              (async () => {
+                let data = await getJson(toRegion, bucket, key);
+                data = JSON.parse(data.Body.toString());
+                console.log('all exports: ', data);
+                if (name) {
+                  found = data.find((item) => item.Name === name);
+                  console.log('Found item: ', found);
+                } else {
+                  return data;
+                }
+                if (found.length === 1) {
+                  return { found };
+                } else {
+                  return new Error('No such key!');
+                }
+              })()
+              .then(() => {
+                console.log("found:", found);
+                response.send(event, context, response.SUCCESS, { ...found });
+              })
+              .catch(err => {
+                console.error(err);
+                response.send(event, context, response.FAILED, { err });
+              });
+            }
+            async function getJson (region, bucket, key) {
+              const s3 = new AWS.S3({region: region});
+              const params = {
+                Bucket: bucket,
+                Key: key
+              };
+              return s3.getObject(params).promise();
+            }
+        Environment:
+          Variables:
+            SELF_ACCOUNT: ${env:SELF_ACCOUNT}
+        FunctionName: 
+          Fn::Join:
+            - "-"
+            - - "iam-cfn-importer"
+              - Ref: "AWS::Region"
+        Handler: "index.handler"
+        Role:
+          Fn::Join:
+            - ""
+            - - "arn:aws:iam::"
+              - Ref: "AWS::AccountId"
+              - ":role/"
+              - "iam-cfn-importer-exporter-lambda-execution"
+        Runtime: nodejs8.10
+        MemorySize: 256
+        Timeout: 180
+
+  Outputs:
+    IAMRegionalImporterArn:
+      Value: !GetAtt IAMRegionalImporter.Arn
+      Export:
+        Name: 
+          Fn::Join:
+            - "-"
+            - - "IAMRegionalImporterArn"
+              - Ref: "AWS::Region"
+    ExporterNotificationArn:
+      Value: 
+        Ref: ExporterNotificationTopic
+      Export: 
+        Name: 
+          Fn::Join:
+            - "-"
+            - - "ExporterNotificationTopicArn"
+              - Ref: "AWS::Region"

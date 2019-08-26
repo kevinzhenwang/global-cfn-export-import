@@ -1,0 +1,206 @@
+frameworkVersion: '>=1.26.0 <2.0.0'
+
+service: iam-cfn-global-importer-exporter-primary
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 1024
+  stackName: iam-cfn-global-importer-exporter-primary
+  timeout: 30
+  tracing: true
+  deploymentBucket:
+      name: ${opt:deployment-bucket}
+      serverSideEncryption: AES256
+      tags:
+        Purpose: 'serverless deployment'
+        Category: utility
+  stackTags:
+    Name: ${opt:branch}.${self:service}
+    Owner: HO-RnD
+    CostCenter: HO-RnD
+    Purpose: ${self:service}
+  role: IAMRoleForLambdaExecution
+  stackPolicy:
+    - Effect: Allow
+      Principal: '*'
+      Action: Update:*
+      Resource: '*'
+
+resources:
+  Conditions:
+    IsPrimaryRegion:
+      Fn::Equals:
+        - Ref: AWS::Region
+        - ${env:PRIMARY_REGION}
+
+  Resources:
+    # IAM     
+    IAMRoleForLambdaExecution:
+      Condition: IsPrimaryRegion
+      Description: Execution role for global importer exporter lambda functions
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: "iam-cfn-importer-exporter-lambda-execution"
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - Ref: IAMManagedPolicyForLambdaExecutionPolicy
+
+    IAMManagedPolicyForLambdaExecutionPolicy:
+      Condition: IsPrimaryRegion
+      Description: Customer managed IAM policy for importer exporter lambda execution role
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        Description: IAM Policy for lambda execution role
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:DescribeLogGroups
+                - logs:DescribeLogStreams
+                - logs:PutLogEvents
+                - logs:GetLogEvents
+                - logs:FilterLogEvents
+              Resource: '*'
+              Effect: Allow
+            - Action: s3:*
+              Resource: '*'
+              Effect: Allow
+            - Action: sns:*
+              Effect: Allow
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+              Resource: '*'
+            - Effect: Allow
+              Action: sqs:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - cloudformation:*
+              Resource: '*'
+
+    # LAMBDA
+    IAMGlobalExporter:
+      Condition: IsPrimaryRegion
+      Type: "AWS::Lambda::Function"
+      Properties:
+        Code:
+          ZipFile: |
+            const response = require('cfn-response');
+            const AWS = require('aws-sdk');
+            exports.handler = (event, context, callback) => {
+              console.log("event: ", event);
+              console.log("typeof event: ", typeof event);
+              const message = JSON.parse(event.Records[0].Sns.Message);
+              console.log("message: ", message);
+              console.log("typeof message: ", typeof message);
+              const { ResourceProperties } = message;
+              console.log("ResourceProperties: ", ResourceProperties);
+              const fromRegion = ResourceProperties.FromRegion;
+              const bucket = 'ir-sls-deploy-${env:SELF_ACCOUNT}-${env:PRIMARY_REGION}/cfn-importer-exporter/' + fromRegion;
+              const key = 'exports-' + fromRegion + '.json';
+              let rawExports = [];
+              let nextToken = "Start";
+              let responseData = { "status": "completed" };
+
+              (async () => {
+                try {
+                  while (nextToken) {
+                    const data = await retrieveRegionalExport(nextToken, fromRegion);
+                    rawExports.push(data);
+                    nextToken = data.NextToken;
+                  }
+                  const exports = flattenJson(rawExports);
+                  await deleteJsonFile(fromRegion, bucket, key);
+                  await generateJsonFile(JSON.stringify(exports), fromRegion, bucket, key);
+                  console.log("exports: ", exports);
+                  return { responseData };
+                } catch(err) {
+                  console.error(err);
+                  return { err };
+                }
+              })()
+              .then(({ responseData }) => {
+                console.log("responseData: ", responseData);
+                response.send(message, context, response.SUCCESS, { ...responseData });
+              })
+              .catch(err => {
+                console.error(err);
+                response.send(message, context, response.FAILED, { err });
+              });
+            }
+            async function retrieveRegionalExport(nextToken, region) {
+                const cloudformation = new AWS.CloudFormation({ region: region });
+                const params = nextToken && nextToken !== 'Start'? { NextToken: nextToken } : {};
+                return cloudformation.listExports(params).promise();
+            }
+            function flattenJson(rawExports) {
+                let exports = [];
+                rawExports.forEach((item) => {
+                    exports.push(item.Exports);
+                });   
+                return [].concat.apply([], exports);
+            }
+            async function deleteJsonFile(region, bucket, key) {
+                const s3 = new AWS.S3({region: region});
+                const params = {
+                  Bucket: bucket, 
+                  Key: key
+                };
+                return s3.deleteObject(params).promise();
+            }
+            async function generateJsonFile(exports, region, bucket, key) {
+              const s3 = new AWS.S3({region: region});
+              const params = {
+                Bucket: bucket,
+                Key: key,
+                Body: Buffer.from(exports),
+                ContentType: "application/json"
+              };
+              return s3.upload(params).promise();
+            }
+        DeadLetterConfig:
+          TargetArn: !GetAtt DeadExporterQueue.Arn
+        Environment:
+          Variables:
+            SELF_ACCOUNT: ${env:SELF_ACCOUNT}
+        FunctionName: iam-cfn-global-exporter
+        Handler: "index.handler"
+        Role: !GetAtt IAMRoleForLambdaExecution.Arn
+        Runtime: nodejs8.10
+        MemorySize: 256
+        Timeout: 180
+
+    # SQS
+    DeadExporterQueue:
+      Condition: IsPrimaryRegion
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: iam-global-dead-exporter
+
+  Outputs:
