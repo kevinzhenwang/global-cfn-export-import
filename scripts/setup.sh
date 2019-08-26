@@ -2,7 +2,7 @@
 set -e
 
 unique_prefix=${1}
-region=${2:us-east-1}
+region=${2:-us-east-1}
 export_import_bucket=${unique_prefix}_export_import_bucket
 
 echo "[i] region -- ${region}"
