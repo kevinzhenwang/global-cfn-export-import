@@ -14,10 +14,9 @@ env:
 before_install:
 - find . -name "*.sh" -print0 | xargs -0 chmod +x
 - pip install --user awscli
-- npm -v
-- npm install -g serverless
 
 script:
+- npm install -g serverless
 - ./scripts/ecr_credentials.sh
 - ./scripts/setup.sh youruniqueprefix
 
