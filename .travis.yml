@@ -1,4 +1,11 @@
 language: node_js
+node_js:
+- node
+cache:
+  directories:
+    - node_modules
+script:
+    - npm install -g serverless
 # dist: xenial
 #   addons:
 #     snaps:
@@ -16,7 +23,6 @@ before_install:
 - pip install --user awscli
 
 script:
-- npm install -g serverless
 - ./scripts/ecr_credentials.sh
 - ./scripts/setup.sh youruniqueprefix
 
