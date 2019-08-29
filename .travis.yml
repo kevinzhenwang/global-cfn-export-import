@@ -27,7 +27,7 @@ before_install:
 
 script:
 - ./scripts/ecr_credentials.sh
-- ./scripts/setup.sh UNIQUE_PREFIX
+- ./scripts/setup.sh env.global.UNIQUE_PREFIX
 
 # jobs:
 #   include:
