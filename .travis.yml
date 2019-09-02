@@ -4,8 +4,7 @@ node_js:
 cache:
   directories:
     - node_modules
-before_install:
-    - npm install -g serverless
+
 # dist: xenial
 #   addons:
 #     snaps:
@@ -23,15 +22,18 @@ env:
   - SUPPORTED_REGIONS=(us-east-1 us-west-2 ap-southeast-2)
 
 before_install:
-- find . -name "*.sh" -print0 | xargs -0 chmod +x
-- pip install --user awscli
+  - find . -name "*.sh" -print0 | xargs -0 chmod +x
+  - pip install --user awscli
+
+install:
+  - npm install -g serverless
 
 script:
-- ./scripts/ecr_credentials.sh
-- ./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
-- ./scripts/deploy_primary.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
-- ./scripts/deploy_supported.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
-- ./scripts/connect.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS
+  - ./scripts/ecr_credentials.sh
+  - ./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
+  - ./scripts/deploy_primary.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
+  - ./scripts/deploy_supported.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
+  - ./scripts/connect.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS
 
 # jobs:
 #   include:
