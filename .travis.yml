@@ -4,7 +4,7 @@ node_js:
 cache:
   directories:
     - node_modules
-script:
+before_install:
     - npm install -g serverless
 # dist: xenial
 #   addons:
