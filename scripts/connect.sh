@@ -1,28 +1,20 @@
 #!/bin/bash
 set -e
 
-core_aws_account=$1
-supported_regions=$2
-primary_region=$3
+unique_prefix=$1
+primary_region=$2
+supported_regions=$3
 
-echo "core_aws_account - ${core_aws_account}"
-echo "supported_regions - ${supported_regions}"
+aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
+
 echo "primary_region - ${primary_region}"
+echo "supported_regions - ${supported_regions}"
 
-supported_regions=${supported_regions//,/}
-supported_regions=${supported_regions##[}
-supported_regions=${supported_regions%]}
-echo "new supported_regions - ${supported_regions}"
-target_regions=($supported_regions)
-echo "target_regions - ${target_regions}"
-
-cd serverless/supported
-
-for region in ${target_regions[@]}; do
+for region in ${supported_regions[@]}; do
   echo "working region - ${region}"
 
-  primary_lambda="arn:aws:lambda:${primary_region}:${core_aws_account}:function:iam-cfn-global-exporter"
-  source_sns_arn="arn:aws:sns:${region}:${core_aws_account}:iam-global-exporter-notification-${region}"
+  primary_lambda="arn:aws:lambda:${primary_region}:${aws_account_id}:function:${unique_prefix}-global-cfn-exporter"
+  source_sns_arn="arn:aws:sns:${region}:${aws_account_id}:${unique_prefix}-global-exporter-notification-${region}"
   dt=$(date '+%Y%m%d_%H%M%S')
 
   set -o xtrace

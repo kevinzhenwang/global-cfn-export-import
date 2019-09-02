@@ -1,26 +1,24 @@
 frameworkVersion: '>=1.26.0 <2.0.0'
 
-service: iam-cfn-global-importer-exporter-primary
+service: ${opt:unique-prefix}-global-cfn-export-import-primary
 
 provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 1024
-  stackName: iam-cfn-global-importer-exporter-primary
+  stackName: ${opt:unique-prefix}-global-cfn-export-import-primary
   timeout: 30
   tracing: true
   deploymentBucket:
-      name: ${opt:deployment-bucket}
+      name: ${opt:export-import-bucket}
       serverSideEncryption: AES256
       tags:
         Purpose: 'serverless deployment'
         Category: utility
   stackTags:
-    Name: ${opt:branch}.${self:service}
-    Owner: HO-RnD
-    CostCenter: HO-RnD
+    Name: ${opt:unique-prefix}.${self:service}
     Purpose: ${self:service}
-  role: IAMRoleForLambdaExecution
+  role: LambdaExecutionRole
   stackPolicy:
     - Effect: Allow
       Principal: '*'
@@ -32,16 +30,16 @@ resources:
     IsPrimaryRegion:
       Fn::Equals:
         - Ref: AWS::Region
-        - ${env:PRIMARY_REGION}
+        - ${opt:primary-region}
 
   Resources:
     # IAM     
-    IAMRoleForLambdaExecution:
+    LambdaExecutionRole:
       Condition: IsPrimaryRegion
-      Description: Execution role for global importer exporter lambda functions
+      Description: Execution role for global cfn export import lambda functions
       Type: AWS::IAM::Role
       Properties:
-        RoleName: "iam-cfn-importer-exporter-lambda-execution"
+        RoleName: '${opt:unique-prefix}-global-cfn-export-import-lambda-execution'
         AssumeRolePolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -52,11 +50,11 @@ resources:
               Action:
                 - sts:AssumeRole
         ManagedPolicyArns:
-          - Ref: IAMManagedPolicyForLambdaExecutionPolicy
+          - Ref: ManagedPolicyForLambdaExecutionPolicy
 
-    IAMManagedPolicyForLambdaExecutionPolicy:
+    ManagedPolicyForLambdaExecutionPolicy:
       Condition: IsPrimaryRegion
-      Description: Customer managed IAM policy for importer exporter lambda execution role
+      Description: Customer managed IAM policy for global exporter importer lambda execution role
       Type: AWS::IAM::ManagedPolicy
       Properties:
         Description: IAM Policy for lambda execution role
@@ -80,11 +78,6 @@ resources:
               Effect: Allow
               Resource: '*'
             - Effect: Allow
-              Action:
-                - xray:PutTraceSegments
-                - xray:PutTelemetryRecords
-              Resource: '*'
-            - Effect: Allow
               Action: sqs:*
               Resource: '*'
             - Effect: Allow
@@ -105,7 +98,7 @@ resources:
               Resource: '*'
 
     # LAMBDA
-    IAMGlobalExporter:
+    GlobalExporter:
       Condition: IsPrimaryRegion
       Type: "AWS::Lambda::Function"
       Properties:
@@ -122,7 +115,7 @@ resources:
               const { ResourceProperties } = message;
               console.log("ResourceProperties: ", ResourceProperties);
               const fromRegion = ResourceProperties.FromRegion;
-              const bucket = 'ir-sls-deploy-${env:SELF_ACCOUNT}-${env:PRIMARY_REGION}/cfn-importer-exporter/' + fromRegion;
+              const bucket = '${opt:export-import-bucket}/cfn-exporter-importer/' + fromRegion;
               const key = 'exports-' + fromRegion + '.json';
               let rawExports = [];
               let nextToken = "Start";
@@ -186,12 +179,9 @@ resources:
             }
         DeadLetterConfig:
           TargetArn: !GetAtt DeadExporterQueue.Arn
-        Environment:
-          Variables:
-            SELF_ACCOUNT: ${env:SELF_ACCOUNT}
-        FunctionName: iam-cfn-global-exporter
+        FunctionName: ${opt:unique-prefix}-global-cfn-exporter
         Handler: "index.handler"
-        Role: !GetAtt IAMRoleForLambdaExecution.Arn
+        Role: !GetAtt LambdaExecutionRole.Arn
         Runtime: nodejs8.10
         MemorySize: 256
         Timeout: 180
@@ -201,6 +191,6 @@ resources:
       Condition: IsPrimaryRegion
       Type: "AWS::SQS::Queue"
       Properties:
-        QueueName: iam-global-dead-exporter
+        QueueName: ${opt:unique-prefix}-global-dead-exporter
 
   Outputs:

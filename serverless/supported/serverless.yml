@@ -1,24 +1,22 @@
 frameworkVersion: '>=1.26.0 <2.0.0'
 
-service: iam-cfn-global-importer-exporter-supported
+service: ${opt:unique-prefix}-global-cfn-export-import-supported
 
 provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 1024
-  stackName: iam-cfn-global-importer-exporter-supported-${opt:region}
+  stackName: ${opt:unique-prefix}-global-cfn-export-import-supported-${opt:region}
   timeout: 30
   tracing: true
   deploymentBucket:
-      name: ${opt:deployment-bucket}
+      name: ${opt:export-import-bucket}
       serverSideEncryption: AES256
       tags:
         Purpose: 'serverless deployment'
         Category: utility
   stackTags:
-    Name: ${opt:branch}.${self:service}
-    Owner: HO-RnD
-    CostCenter: HO-RnD
+    Name: ${opt:unique-prefix}.${self:service}
     Purpose: ${self:service}
   stackPolicy:
     - Effect: Allow
@@ -27,12 +25,6 @@ provider:
       Resource: '*'
 
 resources:
-  Conditions:
-    IsPrimaryRegion:
-      Fn::Equals:
-        - Ref: AWS::Region
-        - ${env:PRIMARY_REGION}
-
   Resources:
     # SNS
     ExporterNotificationTopic:
@@ -41,12 +33,14 @@ resources:
         DisplayName:
           Fn::Join:
             - '-'
-            - - 'ExporterTopic'
+            - - '${opt:unique-prefix}'
+              - 'ExporterTopic'
               - Ref: 'AWS::Region'
         TopicName: 
           Fn::Join:
             - '-'
-            - - 'iam-global-exporter-notification'
+            - - '${opt:unique-prefix}'
+              - 'global-exporter-notification'
               - Ref: 'AWS::Region'        
 
     ExporterNotificationSubscription: 
@@ -54,19 +48,19 @@ resources:
       Properties:
         Endpoint: 
           Fn::Join:
-            - ""
-            - - "arn:aws:lambda:"
-              - ${env:PRIMARY_REGION}
-              - ":"
-              - Ref: "AWS::AccountId"
-              - ":function:"
-              - "iam-cfn-global-exporter"
+            - ''
+            - - 'arn:aws:lambda:'
+              - '${opt:primary-region}'
+              - ':'
+              - Ref: 'AWS::AccountId'
+              - ':function:'
+              - '${opt:unique-prefix}-global-cfn-exporter'
         Protocol: "lambda"
         TopicArn: 
           Ref: ExporterNotificationTopic
 
     # LAMBDA
-    IAMRegionalImporter:
+    RegionalImporter:
       Type: "AWS::Lambda::Function"
       Properties:
         Code:
@@ -78,7 +72,7 @@ resources:
               const { ResourceProperties } = event;
               console.log('ResourceProperties: ', ResourceProperties);
               const { toRegion, name } = ResourceProperties;
-              const bucket = 'ir-sls-deploy-${env:SELF_ACCOUNT}-${env:PRIMARY_REGION}/cfn-importer-exporter/' + toRegion;
+              const bucket = '${opt:export-import-bucket}/cfn-exporter-importer/' + toRegion;
               const key = 'exports-' + toRegion +'.json';
               let found = {};
               (async () => {
@@ -114,41 +108,41 @@ resources:
               };
               return s3.getObject(params).promise();
             }
-        Environment:
-          Variables:
-            SELF_ACCOUNT: ${env:SELF_ACCOUNT}
         FunctionName: 
           Fn::Join:
-            - "-"
-            - - "iam-cfn-importer"
-              - Ref: "AWS::Region"
-        Handler: "index.handler"
+            - '-'
+            - - '${opt:unique-prefix}'
+              - 'cfn-importer'
+              - Ref: 'AWS::Region'
+        Handler: 'index.handler'
         Role:
           Fn::Join:
-            - ""
-            - - "arn:aws:iam::"
-              - Ref: "AWS::AccountId"
-              - ":role/"
-              - "iam-cfn-importer-exporter-lambda-execution"
+            - ''
+            - - 'arn:aws:iam::'
+              - Ref: 'AWS::AccountId'
+              - ':role/'
+              - '${opt:unique-prefix}-global-cfn-export-import-lambda-execution'
         Runtime: nodejs8.10
         MemorySize: 256
         Timeout: 180
 
   Outputs:
-    IAMRegionalImporterArn:
-      Value: !GetAtt IAMRegionalImporter.Arn
+    RegionalImporterArn:
+      Value: !GetAtt RegionalImporter.Arn
       Export:
         Name: 
           Fn::Join:
-            - "-"
-            - - "IAMRegionalImporterArn"
-              - Ref: "AWS::Region"
+            - '-'
+            - - '${opt:unique-prefix}'
+              - 'RegionalImporterArn'
+              - Ref: 'AWS::Region'
     ExporterNotificationArn:
       Value: 
         Ref: ExporterNotificationTopic
       Export: 
         Name: 
           Fn::Join:
-            - "-"
-            - - "ExporterNotificationTopicArn"
-              - Ref: "AWS::Region"
+            - '-'
+            - - '${opt:unique-prefix}'
+              - 'ExporterNotificationTopicArn'
+              - Ref: 'AWS::Region'
