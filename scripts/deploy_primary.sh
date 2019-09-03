@@ -14,6 +14,6 @@ cd ./serverless/primary
 
 serverless deploy \
   --unique-prefix ${unique_prefix} \
-  --export-import-bucket "${export_import_bucket}" \
+  --export-import-bucket ${export_import_bucket} \
   --primary-region ${primary_region} \
-  --region ${region}
+  --region ${primary_region}
