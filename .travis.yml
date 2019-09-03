@@ -19,7 +19,7 @@ env:
   - UNIQUE_PREFIX=youruniqueprefix
   - EXPORT_IMPORT_BUCKET=$UNIQUE_PREFIX-export-import-bucket
   - PRIMARY_REGION=us-east-1
-  - SUPPORTED_REGIONS=(us-east-1 us-west-2 ap-southeast-2)
+  - SUPPORTED_REGIONS=us-east-1,us-west-2,ap-southeast-2
 
 before_install:
   - find . -name "*.sh" -print0 | xargs -0 chmod +x
