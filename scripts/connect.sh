@@ -10,7 +10,11 @@ aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
 echo "primary_region - ${primary_region}"
 echo "supported_regions - ${supported_regions}"
 
-for region in ${supported_regions[@]}; do
+supported_regions=${supported_regions//,/ /}
+target_regions=($supported_regions)
+echo "target_regions - ${target_regions}"
+
+for region in ${target_regions[@]}; do
   echo "working region - ${region}"
 
   primary_lambda="arn:aws:lambda:${primary_region}:${aws_account_id}:function:${unique_prefix}-global-cfn-exporter"

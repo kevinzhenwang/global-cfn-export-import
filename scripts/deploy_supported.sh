@@ -11,9 +11,13 @@ echo "export_import_bucket - ${export_import_bucket}"
 echo "primary_region - ${primary_region}"
 echo "supported_regions - ${supported_regions}"
 
+supported_regions=${supported_regions//,/ /}
+target_regions=($supported_regions)
+echo "target_regions - ${target_regions}"
+
 cd ./serverless/supported
 
-for region in ${supported_regions[@]}; do
+for region in ${target_regions[@]}; do
   echo "Deploying to ${region}"
 
   set -o xtrace
