@@ -10,9 +10,8 @@ aws_account_id=$(aws sts get-caller-identity --query "Account" --output text)
 echo "primary_region - ${primary_region}"
 echo "supported_regions - ${supported_regions}"
 
-supported_regions=$(echo ${supported_regions//,/ })
+supported_regions=${supported_regions//,/ }
 target_regions=($supported_regions)
-echo "target_regions - ${target_regions}"
 
 for region in ${target_regions[@]}; do
   echo "working region - ${region}"

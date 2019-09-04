@@ -25,25 +25,11 @@ function bucket_provisioning () {
   fi
 }
 
-# echo "[#] checking global export import bucket exists or not"
-# query_bucket_name=$(aws s3api list-buckets \
-#     --query "Buckets[?Name=='$export_import_bucket'].Name" \
-#     --output text)
-#     echo "[i] query bucket name -- ${query_bucket_name}"
-
-# if [ -z $query_bucket_name ]; then
-#     echo "[#] global export import bucket not exists, then create"
-#     aws s3api create-bucket --bucket $export_import_bucket --region $primary_region
-# else
-#     echo "[x] global export import bucket already exists, ignore creating"
-# fi
-
 # export import resources bucket provisioning
 bucket_provisioning $export_import_bucket $primary_region
 
 supported_regions=${supported_regions//,/ }
 target_regions=($supported_regions)
-echo "target_regions - ${target_regions}"
 
 for region in ${target_regions[@]}; do
   echo "working region - ${region}"
