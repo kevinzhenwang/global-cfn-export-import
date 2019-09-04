@@ -9,6 +9,21 @@ supported_regions=${4}
 echo "[i] primary region -- ${primary_region}"
 echo "[i] export import bucket -- ${export_import_bucket}"
 
+function bucket_provisioning () {
+  echo "[#] checking $1 exists or not"
+  query_bucket_name=$(aws s3api list-buckets \
+    --query "Buckets[?Name=='$1'].Name" \
+    --output text)
+  echo "[i] query bucket name -- ${query_bucket_name}"
+
+  if [ -z $query_bucket_name ]; then
+    echo "[#] $1 not exists, then create"
+    aws s3api create-bucket --bucket $1 --region $2
+  else
+    echo "[x] $1 already exists, ignore creating"
+  fi
+}
+
 # echo "[#] checking global export import bucket exists or not"
 # query_bucket_name=$(aws s3api list-buckets \
 #     --query "Buckets[?Name=='$export_import_bucket'].Name" \
@@ -35,18 +50,3 @@ for region in ${target_regions[@]}; do
   # serverless deployment bucket provisioning
   bucket_provisioning $regional_serverless_bucket $region
 done
-
-bucket_provisioning () {
-  echo "[#] checking $1 exists or not"
-  query_bucket_name=$(aws s3api list-buckets \
-    --query "Buckets[?Name=='$1'].Name" \
-    --output text)
-  echo "[i] query bucket name -- ${query_bucket_name}"
-
-  if [ -z $query_bucket_name ]; then
-    echo "[#] $1 not exists, then create"
-    aws s3api create-bucket --bucket $1 --region $2
-  else
-    echo "[x] $1 already exists, ignore creating"
-  fi    
-}
