@@ -1,16 +1,16 @@
 frameworkVersion: '>=1.26.0 <2.0.0'
 
-service: ${opt:unique-prefix}-global-cfn-export-import-primary
+service: ${opt:unique-prefix}-global-cfn-exporter-primary
 
 provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 1024
-  stackName: ${opt:unique-prefix}-global-cfn-export-import-primary
+  stackName: ${opt:unique-prefix}-global-cfn-exporter-primary
   timeout: 30
   tracing: true
   deploymentBucket:
-      name: ${opt:export-import-bucket}
+      name: ${opt:unique-prefix}-export-import-serverless-${opt:region}
       serverSideEncryption: AES256
       tags:
         Purpose: 'serverless deployment'
@@ -30,7 +30,7 @@ resources:
     IsPrimaryRegion:
       Fn::Equals:
         - Ref: AWS::Region
-        - ${opt:primary-region}
+        - ${opt:region}
 
   Resources:
     # IAM     
