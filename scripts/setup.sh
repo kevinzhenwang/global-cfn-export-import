@@ -18,7 +18,8 @@ function bucket_provisioning () {
 
   if [ -z $query_bucket_name ]; then
     echo "[#] $1 not exists, then create"
-    aws s3api create-bucket --bucket $1 --region $2
+    aws s3api create-bucket --bucket $1 --region $2 \
+      --create-bucket-configuration LocationConstraint=$2
   else
     echo "[x] $1 already exists, ignore creating"
   fi
