@@ -12,7 +12,7 @@ echo "primary_region - ${primary_region}"
 echo "supported_regions - ${supported_regions}"
 
 supported_regions=$(echo ${supported_regions//,/ })
-target_regions="($supported_regions)"
+target_regions=($supported_regions)
 echo "target_regions - ${target_regions}"
 
 cd ./serverless/supported

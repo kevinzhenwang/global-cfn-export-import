@@ -40,8 +40,8 @@ function bucket_provisioning () {
 # export import resources bucket provisioning
 bucket_provisioning $export_import_bucket $primary_region
 
-supported_regions=$(echo ${supported_regions//,/ })
-target_regions="($supported_regions)"
+supported_regions=${supported_regions//,/ }
+target_regions=($supported_regions)
 echo "target_regions - ${target_regions}"
 
 for region in ${target_regions[@]}; do

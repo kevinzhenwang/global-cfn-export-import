@@ -25,8 +25,8 @@ before_install:
   - find . -name "*.sh" -print0 | xargs -0 chmod +x
   - pip install --user awscli
 
-install:
-  - npm install -g serverless
+# install:
+#   - npm install -g serverless
 
 script:
   - ./scripts/ecr_credentials.sh
