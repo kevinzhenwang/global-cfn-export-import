@@ -30,7 +30,7 @@ install:
 
 script:
   - ./scripts/ecr_credentials.sh
-  - ./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
+  - ./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
   - ./scripts/deploy_primary.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
   - ./scripts/deploy_supported.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
   - ./scripts/connect.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS
