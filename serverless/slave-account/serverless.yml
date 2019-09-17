@@ -1,0 +1,130 @@
+frameworkVersion: ">=1.26.0 <2.0.0"
+
+service: ${opt:unique-prefix}-slave-account-role
+
+provider:
+  name: aws
+  stackName: ${self:service}
+  stackTags:
+    Name: ${self:service}
+    Purpose: '${opt:unique-prefix}-global-cfn-export-import'
+  stackPolicy:
+    - Effect: Allow
+      Principal: '*'
+      Action: Update:*
+      Resource: '*'
+
+resources:      
+  Resources:
+    SlaveForCentral:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: '${opt:unique-prefix}-iam-slave-for-master'
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                AWS: arn:aws:iam::${env:ir_account}:root
+              Action:
+                - "sts:AssumeRole"
+        ManagedPolicyArns:
+          - Ref: SlaveForCentralPolicy
+
+    SlaveForCentralPolicy:
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        Description: "Slave For Central Policy ${opt:stage}"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:DescribeLogGroups
+                - logs:DescribeLogStreams
+                - logs:PutLogEvents
+                - logs:GetLogEvents
+                - logs:FilterLogEvents
+              Resource: '*'
+              Effect: Allow
+            - Action: s3:*
+              Resource: '*'
+              Effect: Allow
+            - Action: dynamodb:*
+              Resource: '*'
+              Effect: Allow
+            - Action: sns:*
+              Effect: Allow
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - xray:PutTraceSegments
+                - xray:PutTelemetryRecords
+              Resource: '*'
+            - Effect: Allow
+              Action: ses:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - iam:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - route53:ChangeResourceRecordSets
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - 'cognito-idp:*'
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - 'cognito-identity:*'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DeleteNetworkInterface
+              Resource: "*"
+            - Effect: 'Allow'
+              Action:
+                - cloudformation:DescribeStacks
+                - cloudformation:CreateStack
+                - cloudformation:UpdateStack
+                - cloudformation:DeleteStack
+                - cloudformation:CreateChangeSet
+                - cloudformation:DeleteChangeSet
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - rds:*
+              Resource: 'arn:aws:rds:*:*:*'
+            - Effect: 'Allow'
+              Action:
+                - secretsmanager:GetRandomPassword
+                - secretsmanager:CreateSecret
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - secretsmanager:GetSecretValue
+                - secretsmanager:GetRandomPassword
+                - secretsmanager:CreateSecret
+              Resource: 'arn:aws:secretsmanager:*:*:secret:*'
+
+  Outputs:
+    SlaveForCentralRoleArn:
+      Value:
+        Fn::GetAtt: [SlaveForCentral, Arn]

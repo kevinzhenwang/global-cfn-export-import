@@ -14,7 +14,7 @@ echo "supported_regions - ${supported_regions}"
 supported_regions=${supported_regions//,/ }
 target_regions=($supported_regions)
 
-cd ./serverless/supported
+cd ./serverless/master-account/supported-regions
 
 for region in ${target_regions[@]}; do
   echo "Deploying to ${region}"

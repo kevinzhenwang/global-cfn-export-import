@@ -6,18 +6,18 @@ provider:
   name: aws
   runtime: nodejs8.10
   memorySize: 1024
-  stackName: ${opt:unique-prefix}-global-cfn-importer-supported-${opt:region}
+  stackName: ${self:service}-${opt:region}
   timeout: 30
   tracing: true
   deploymentBucket:
       name: ${opt:unique-prefix}-export-import-serverless-${opt:region}
       serverSideEncryption: AES256
       tags:
-        Purpose: 'serverless deployment'
+        Purpose: '${opt:unique-prefix} serverless deployment'
         Category: utility
   stackTags:
-    Name: ${opt:unique-prefix}.${self:service}
-    Purpose: ${self:service}
+    Name: ${self:provider.stackName}
+    Purpose: '${opt:unique-prefix}-global-cfn-export-import'
   stackPolicy:
     - Effect: Allow
       Principal: '*'
@@ -34,7 +34,7 @@ resources:
           Fn::Join:
             - '-'
             - - '${opt:unique-prefix}'
-              - 'ExporterTopic'
+              - 'exporter-topic'
               - Ref: 'AWS::Region'
         TopicName: 
           Fn::Join:
@@ -72,7 +72,7 @@ resources:
               const { ResourceProperties } = event;
               console.log('ResourceProperties: ', ResourceProperties);
               const { toRegion, name } = ResourceProperties;
-              const bucket = '${opt:export-import-bucket}/cfn-exporter-importer/' + toRegion;
+              const bucket = '${opt:export-import-bucket}';
               const key = 'exports-' + toRegion +'.json';
               let found = {};
               (async () => {

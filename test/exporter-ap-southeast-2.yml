@@ -1,3 +1,5 @@
+// iot certificate
+
 frameworkVersion: '>=1.26.0 <2.0.0'
 
 service: ${opt:unique-prefix}-global-cfn-exporter-primary

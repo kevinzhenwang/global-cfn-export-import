@@ -1,0 +1,222 @@
+frameworkVersion: '>=1.26.0 <2.0.0'
+
+service: ${opt:unique-prefix}-global-cfn-exporter-primary
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 1024
+  stackName: ${self:service}
+  timeout: 30
+  tracing: true
+  deploymentBucket:
+      name: ${opt:unique-prefix}-export-import-serverless-${opt:region}
+      serverSideEncryption: AES256
+      tags:
+        Purpose: '${opt:unique-prefix} serverless deployment'
+        Category: utility
+  stackTags:
+    Name: ${self:service}
+    Purpose: '${opt:unique-prefix}-global-cfn-export-import'
+  role: LambdaExecutionRole
+  stackPolicy:
+    - Effect: Allow
+      Principal: '*'
+      Action: Update:*
+      Resource: '*'
+
+resources:
+  Conditions:
+    IsPrimaryRegion:
+      Fn::Equals:
+        - Ref: AWS::Region
+        - ${opt:region}
+
+  Resources:
+    # IAM     
+    LambdaExecutionRole:
+      Condition: IsPrimaryRegion
+      Description: Execution role for global cfn export import lambda functions
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: '${opt:unique-prefix}-global-cfn-export-import-lambda-execution'
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
+        ManagedPolicyArns:
+          - Ref: ManagedPolicyForLambdaExecutionPolicy
+          - Ref: MasterAccountStsPolicy
+
+    # LAMBDA EXECUTION POLICY
+    ManagedPolicyForLambdaExecutionPolicy:
+      Condition: IsPrimaryRegion
+      Description: Customer managed IAM policy for global exporter importer lambda execution role
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        Description: IAM Policy for lambda execution role
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:DescribeLogGroups
+                - logs:DescribeLogStreams
+                - logs:PutLogEvents
+                - logs:GetLogEvents
+                - logs:FilterLogEvents
+              Resource: '*'
+              Effect: Allow
+            - Action: s3:*
+              Resource: '*'
+              Effect: Allow
+            - Action: sns:*
+              Effect: Allow
+              Resource: '*'
+            - Effect: Allow
+              Action: sqs:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - lambda:InvokeFunction
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cloudwatch:*
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource: '*'
+            - Effect: 'Allow'
+              Action:
+                - cloudformation:*
+              Resource: '*'
+
+    # STS POLICY
+    MasterAccountStsPolicy:
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        ManagedPolicyName: '${opt:unique-prefix}-iam-master-account-sts-policy'
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: 'sts:AssumeRole'
+              Resource: arn:aws:iam::${opt:shared_account}:role/${opt:unique-prefix}-iam-slave-for-master
+
+    # LAMBDA
+    GlobalExporter:
+      Condition: IsPrimaryRegion
+      Type: "AWS::Lambda::Function"
+      Properties:
+        Code:
+          ZipFile: |
+            const response = require('cfn-response');
+            const AWS = require('aws-sdk');
+            exports.handler = (event, context, callback) => {
+              console.log("event: ", event);
+              const message = JSON.parse(event.Records[0].Sns.Message);
+              console.log("message: ", message);
+              const { ResourceProperties } = message;
+              console.log("ResourceProperties: ", ResourceProperties);
+              const { fromRegion, exportName, exportValue } = ResourceProperties;
+              const bucket = '${opt:export-import-bucket}';
+              const exportJsonKey = 'exports-' + fromRegion + '.json';
+              let responseData = { "status": "completed" };
+              (async () => {
+                try {
+                  let json = null;
+                  const isKeyExist = await isBucketKeyExist(fromRegion, bucket, exportJsonKey);
+                  console.log('isBucketKeyExist: ', isKeyExist);
+                  if (isKeyExist) {
+                    const getObject = await getExportObject(fromRegion, bucket, exportJsonKey);
+                    json = JSON.parse(getObject.Body.toString());
+                    json = modifyExportObject(json, exportName, exportValue);
+                  } else {
+                    json = { [exportName]: exportValue };
+                  }
+                  console.log('JSON for exporting: ', json);
+                  await putExportObject(fromRegion, bucket, exportJsonKey, json);
+                  return { responseData };
+                } catch(err) {
+                  console.error('err: ', err);
+                  return { err };
+                }
+              })()
+              .then(({ responseData }) => {
+                console.log("responseData: ", responseData);
+                response.send(message, context, response.SUCCESS, { ...responseData });
+              })
+              .catch(err => {
+                console.error(err);
+                response.send(message, context, response.FAILED, { err });
+              });
+            }
+            async function isBucketKeyExist(region, bucket, key) {
+              let isExist = false;
+              const allExportObjects = await listExportObjects(region, bucket);
+              console.log('allExportObjects: ', allExportObjects);
+              if (allExportObjects && allExportObjects.Contents && allExportObjects.Contents.length > 0) {
+                  isExist = allExportObjects.Contents.some((object) => object.Key === key);
+              }
+              return isExist;
+            }
+            async function listExportObjects(region, bucket) {
+              console.log('list objects of bucket  ', bucket);
+              const s3 = new AWS.S3({region: region, signatureVersion: 'v2'});
+              const params = {
+                Bucket: bucket,
+                MaxKeys: 100
+              };
+              return s3.listObjects(params).promise();
+            } 
+            async function getExportObject(region, bucket, key) {
+              const s3 = new AWS.S3({region: region});
+              const params = {
+                Bucket: bucket,
+                Key: key
+              };
+              return s3.getObject(params).promise();  
+            }
+            async function putExportObject(region, bucket, key, json) {
+              const s3 = new AWS.S3({region: region});
+              const params = {
+                ServerSideEncryption: "AES256",
+                Bucket: bucket,
+                Key: key,
+                Body: JSON.stringify(json, null, 2),
+                ContentType: "application/json"
+              };
+              await s3.putObject(params).promise();
+            }
+            function modifyExportObject(json, name, value) {
+              return Object.assign(json, { [name]: value });
+            }
+        DeadLetterConfig:
+          TargetArn: !GetAtt DeadExporterQueue.Arn
+        FunctionName: ${opt:unique-prefix}-global-cfn-exporter
+        Handler: "index.handler"
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Runtime: nodejs8.10
+        MemorySize: 256
+        Timeout: 180
+
+    # SQS
+    DeadExporterQueue:
+      Condition: IsPrimaryRegion
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: ${opt:unique-prefix}-global-dead-exporter
+
+  Outputs:
+    MasterAccountStsPolicyArn:
+    Value: !Ref MasterAccountStsPolicy
+    Export:
+      Name: "${opt:unique-prefix}-master-account-sts-policy"

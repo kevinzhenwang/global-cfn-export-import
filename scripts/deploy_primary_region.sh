@@ -10,7 +10,7 @@ echo "unique_prefix - ${unique_prefix}"
 echo "export_import_bucket - ${export_import_bucket}"
 echo "primary_region - ${primary_region}"
 
-cd ./serverless/primary
+cd ./serverless/master-account/primary-region
 
 serverless deploy \
   --unique-prefix ${unique_prefix} \
