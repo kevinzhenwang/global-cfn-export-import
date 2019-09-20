@@ -109,7 +109,7 @@ resources:
           Statement:
             - Effect: Allow
               Action: 'sts:AssumeRole'
-              Resource: arn:aws:iam::${opt:shared_account}:role/${opt:unique-prefix}-iam-slave-for-master
+              Resource: arn:aws:iam::${opt:slave-account-id}:role/${opt:unique-prefix}-iam-slave-for-master
 
     # LAMBDA
     GlobalExporter:

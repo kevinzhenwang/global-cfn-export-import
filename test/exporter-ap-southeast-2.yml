@@ -1,4 +1,4 @@
-// iot certificate
+// create a cognito user pool inside the slave then export the client id
 
 frameworkVersion: '>=1.26.0 <2.0.0'
 

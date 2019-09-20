@@ -4,7 +4,7 @@ node_js:
 - node
 cache:
   directories:
-    - node_modules
+  - node_modules
 
 env:
   global:
@@ -14,31 +14,19 @@ env:
   - EXPORT_IMPORT_BUCKET=$UNIQUE_PREFIX-export-import-bucket
   - PRIMARY_REGION=us-east-1
   - SUPPORTED_REGIONS=us-east-1,us-west-2,ap-southeast-2
+  - secure: Rac4p6moDPN0xXUEmyuBU71SEp9RwMeMb9rc5+oDQWGhci6EcEF7uqDM4gLzMkCqNOU0tTtAnAaGzDLjJItYVng58MCAn3z39LD1cRomonmbdkVnjk3+XmBY22/a38iZS6k2tPNdzM7iMiB6lO3Bg2cKJ1MQRtWOuk7B40rLB/avNdEQd6nktrlS1yH97ugcNArZD34nQZrdoTAkf/Lj185CJV4gwIyts+sG0VjiDYUsT4V3ZY3fDAWESKFx1atmL7lnHw5oRrynsCnMCFVc9QnYjHhdxDOwCfniGB5UbK5syDuJDR3a8D1nYq36xLtJfRrbVB9HtKlR8CDo4wOY17mNN+lnXuw/ygSKlyP7EQf808gd0BKhGVYVqvEoigBPId0IfMNW+N4whCq0duW+QkcLGAW6P0XYm7RU7sG3iBRT/Od6QhsdsDJF8N9JUJY5XKzsRcNFkjj3Ti7hbE6lUenICDILalDOptneFIo0Tx+WLXrGW6EPMA+oDUlQMz3EzomShHx9AMRkowSyPYIr6SjMIk9zCzaa5uLVGhnXe6/0wnlXRwaPsLIi/K/F+qVLj2OGZMk6dYgmxfF7MjFmDt+6+5/3gq0OexfrbMows2vBZ9VgD6oxMqOwFUF+brqSPFTYiVlTKv9Qs/5OMj5Jplpel23ctUXyxKFW8IESnko=
+  - secure: PwqswWTXjYtOMtiUsnJhoRriefQy7QieJzryjTr4UIDulm/SndgYMPMBMUDuNJcrDVyv26gyCXWfqBrGIVHtVsWaQtBY8zYRJF8y6MxX1ZwHemMJiCKXPUxAG2IajL/+l8SnUN+8n7Q2ZauE9HVIApMShNWNBaeXHj+jZqhe4SciHH8zObZl1JolxYJ7fciagoY6Qs4Rr2PYghqeyJhkCJn69XLY8EMvlGBLc2bbc8J5sNLpWoSkYAxM4EoBA2CeBjmiXf8IMJW3ZzSi+Dy+3+UTnK3IE0P0uUS7Xi+AJfFtqd5f7CSylL7EcejskJmy0QxKd7KYP7HpHvA/ATvRd/t0h3oxnKV+AKeu5EFVLZV+xYixQPSjs6GbxiqBN9WsSsFUUHTyDz1Ze2Ev5IfLjAdne5/J0A2Pythb7qy9Mlh6e7A24fQJFMKuusSMCBj64n3tKAGGww+9jZgkvARzE42Dxcvc+jgaJKRuWrCDS9uT8izv4U2c9JQ29axSXqeMk9jKVdDYAmEt1HVrTpFUYa9ltc97bjS8UDRjKG+VJkKem5m2+WVnGUSkEltQT8ein76c/r27ySDgt3jxLT4Ilpp62vs3HHpHgmB57/mpdPtnLzRCv7T5TQQpMDMCXeUZAuCtGWYikmcl6p0L2St5PpDLsk2q3GMX3gx52+dsb0I=
 
 before_install:
-  - find . -name "*.sh" -print0 | xargs -0 chmod +x
-  - pip install --user awscli
+- find . -name "*.sh" -print0 | xargs -0 chmod +x
+- pip install --user awscli
 
 install:
-  - npm install -g serverless
+- npm install -g serverless
 
 script:
-  - ./scripts/ecr_credentials.sh
-  - ./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
-  - ./scripts/deploy_primary_region.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION
-  - ./scripts/deploy_supported_regions.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS
-  - ./scripts/connect_primary_supported.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS
-
-# jobs:
-#   include:
-#   - stage: setup files
-#     script: echo one | tee > ~/$TRAVIS_BUILD_NUMBER/one
-#   - stage: setup files
-#     script: echo two | tee > ~/$TRAVIS_BUILD_NUMBER/two
-#   - stage: use shared files
-#     script:
-#     - cat ~/$TRAVIS_BUILD_NUMBER/*
-#     after_success:
-#     - aws s3 rm --recursive s3://travis-build-stages-shared-storage-test/$TRAVIS_BUILD_NUMBER
-# after_success:
-# - aws s3 sync ~/$TRAVIS_BUILD_NUMBER s3://travis-build-stages-shared-storage-test/$TRAVIS_BUILD_NUMBER
+- "./scripts/ecr_credentials.sh"
+- "./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS"
+- "./scripts/deploy_primary_region.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION"
+- "./scripts/deploy_supported_regions.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS"
+- "./scripts/connect_primary_supported.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS"

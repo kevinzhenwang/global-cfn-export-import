@@ -37,3 +37,10 @@ for region in ${target_regions[@]}; do
   # serverless deployment bucket provisioning
   bucket_provisioning $regional_serverless_bucket $region
 done
+
+# provisioning master & slave account Id
+master_account_id=$(aws sts get-caller-identity --query "Account" --output text)
+echo $master_account_id > env_master_account_id.txt
+
+slave_account_id=$(aws sts get-caller-identity --query "Account" --output text --profile slave)
+echo $slave_account_id > env_slave_account_id.txt
