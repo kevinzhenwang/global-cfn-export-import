@@ -11,6 +11,7 @@ echo "export_import_bucket - ${export_import_bucket}"
 echo "primary_region - ${primary_region}"
 
 slave_account_id=`cat env_slave_account_id.txt`
+echo "${slave_account_id}"
 
 cd ./serverless/master-account/primary-region
 
