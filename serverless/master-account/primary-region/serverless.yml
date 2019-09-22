@@ -217,6 +217,6 @@ resources:
 
   Outputs:
     MasterAccountStsPolicyArn:
-    Value: !Ref MasterAccountStsPolicy
-    Export:
-      Name: "${opt:unique-prefix}-master-account-sts-policy"
+      Value: !Ref MasterAccountStsPolicy
+      Export:
+        Name: "${opt:unique-prefix}-master-account-sts-policy"
