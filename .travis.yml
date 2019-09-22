@@ -27,6 +27,7 @@ install:
 script:
 - "./scripts/ecr_credentials.sh"
 - "./scripts/setup.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS"
+- "./scripts/provision_slave_account_role.sh $UNIQUE_PREFIX $PRIMARY_REGION"
 - "./scripts/deploy_primary_region.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION"
 - "./scripts/deploy_supported_regions.sh $UNIQUE_PREFIX $EXPORT_IMPORT_BUCKET $PRIMARY_REGION $SUPPORTED_REGIONS"
 - "./scripts/connect_primary_supported.sh $UNIQUE_PREFIX $PRIMARY_REGION $SUPPORTED_REGIONS"
