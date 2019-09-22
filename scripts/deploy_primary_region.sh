@@ -14,6 +14,8 @@ slave_account_id=`cat env_slave_account_id.txt`
 
 cd ./serverless/master-account/primary-region
 
+export SLS_DEBUG=true
+
 serverless deploy \
   --unique-prefix ${unique_prefix} \
   --export-import-bucket ${export_import_bucket} \
