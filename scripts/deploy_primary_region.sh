@@ -18,4 +18,4 @@ serverless deploy \
   --unique-prefix ${unique_prefix} \
   --export-import-bucket ${export_import_bucket} \
   --slave-account-id ${slave_account_id} \
-  --region ${primary_region} \
+  --region ${primary_region}
