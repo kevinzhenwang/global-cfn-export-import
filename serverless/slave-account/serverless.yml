@@ -16,7 +16,7 @@ provider:
 
 resources:      
   Resources:
-    SlaveForCentral:
+    SlaveForMaster:
       Type: AWS::IAM::Role
       Properties:
         RoleName: '${opt:unique-prefix}-iam-slave-for-master'
@@ -29,12 +29,12 @@ resources:
               Action:
                 - "sts:AssumeRole"
         ManagedPolicyArns:
-          - Ref: SlaveForCentralPolicy
+          - Ref: SlaveForMasterPolicy
 
-    SlaveForCentralPolicy:
+    SlaveForMasterPolicy:
       Type: AWS::IAM::ManagedPolicy
       Properties:
-        Description: "Slave For Central Policy ${opt:stage}"
+        Description: "Slave For Master Policy"
         PolicyDocument:
           Version: '2012-10-17'
           Statement:
@@ -125,6 +125,6 @@ resources:
               Resource: 'arn:aws:secretsmanager:*:*:secret:*'
 
   Outputs:
-    SlaveForCentralRoleArn:
+    SlaveForMasterRoleArn:
       Value:
-        Fn::GetAtt: [SlaveForCentral, Arn]
+        Fn::GetAtt: [SlaveForMaster, Arn]
