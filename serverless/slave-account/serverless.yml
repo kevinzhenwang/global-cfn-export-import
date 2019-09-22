@@ -25,7 +25,7 @@ resources:
           Statement:
             - Effect: Allow
               Principal:
-                AWS: arn:aws:iam::${env:ir_account}:root
+                AWS: arn:aws:iam::${opt:master-account-id}:root
               Action:
                 - "sts:AssumeRole"
         ManagedPolicyArns:

@@ -19,4 +19,3 @@ serverless deploy \
   --export-import-bucket ${export_import_bucket} \
   --slave-account-id ${slave_account_id} \
   --region ${primary_region} \
-  --capabilities CAPABILITY_IAM
