@@ -4,6 +4,7 @@ service: ${opt:unique-prefix}-slave-account-role
 
 provider:
   name: aws
+  profile: slave
   stackName: ${self:service}
   stackTags:
     Name: ${self:service}
