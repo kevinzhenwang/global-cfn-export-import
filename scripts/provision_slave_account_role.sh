@@ -17,4 +17,5 @@ serverless deploy \
   --master-account-id ${master_account_id} \
   --region ${primary_region} \
   --capabilities CAPABILITY_IAM \
+  --aws-profile slave \
   --force
